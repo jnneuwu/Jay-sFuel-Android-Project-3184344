@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name -->
+    <string name="app_name">JaysFuel</string>
+
+    <!-- Bottom navigation titles -->
+    <string name="title_home">Fuel Price</string>
+    <string name="title_points">Rewards</string>
+    <string name="title_profile">Profile</string>
+    <string name="title_station">Station Map</string>
+
+    <!-- Gas station screen -->
+    <string name="gas_station_title">Nearby Gas Stations</string>
+    <string name="open_map_button">Open Map</string>
+    <string name="redeem_success">Redeem successful</string>
+    <string name="redeem_fail_not_enough">Not enough points</string>
+    <string name="no_redeemed_rewards">You have not redeemed any rewards yet.</string>
+</resources>

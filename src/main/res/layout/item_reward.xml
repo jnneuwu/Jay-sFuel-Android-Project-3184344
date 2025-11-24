@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootRewardCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/rounded_card"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:layout_marginBottom="8dp">
+
+    <ImageView
+        android:id="@+id/ivRewardImage"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="12dp"
+        android:contentDescription="@string/app_name"
+        android:src="@drawable/ic_gift" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvRewardName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reward name"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvRewardDescription"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Description"
+            android:textSize="12sp"
+            android:layout_marginTop="2dp" />
+
+        <TextView
+            android:id="@+id/tvRewardCost"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="500 pts"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnRedeem"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Redeem" />
+</LinearLayout>
