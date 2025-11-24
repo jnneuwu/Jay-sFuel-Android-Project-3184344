@@ -5,26 +5,26 @@
     android:id="@+id/nav_graph"
     app:startDestination="@id/navigation_home">
 
-    <!-- 首页 / 油价页 -->
+    <!-- Homepage / Oil Price Page -->
     <fragment
         android:id="@+id/navigation_home"
         android:name="com.example.jaysfuel.ui.home.HomeFragment"
         android:label="@string/title_home"
         tools:layout="@layout/fragment_home" />
 
-    <!-- 积分页 -->
+    <!-- Points page -->
     <fragment
         android:id="@+id/navigation_points"
         android:name="com.example.jaysfuel.ui.points.PointsFragment"
         android:label="@string/title_points"
         tools:layout="@layout/fragment_points" />
 
-    <!-- 用户信息页 -->
+    <!-- User Information Page -->
     <fragment
         android:id="@+id/navigation_profile"
         android:name="com.example.jaysfuel.ui.profile.ProfileFragment"
         android:label="@string/title_profile"
         tools:layout="@layout/fragment_profile" />
 
-    <!-- 注意：没有 navigation_station，导航按钮不走 nav_graph -->
+    <!-- Note: Without navigation_station, navigation buttons will not follow nav_graph -->
 </navigation>

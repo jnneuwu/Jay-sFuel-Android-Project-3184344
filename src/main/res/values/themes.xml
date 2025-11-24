@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- 继承 AppCompat 主题，无需 Material3 -->
+
     <style name="Theme.JaysFuel" parent="Theme.AppCompat.Light.NoActionBar">
-        <!-- 主要颜色 -->
+        <!-- Main color -->
         <item name="colorPrimary">#2196F3</item>
         <item name="colorPrimaryDark">#1976D2</item>
         <item name="colorAccent">#03DAC6</item>
 
-        <!-- 状态栏颜色（可选） -->
+        <!-- Status bar color (optional) -->
         <item name="android:statusBarColor">#1976D2</item>
     </style>
 

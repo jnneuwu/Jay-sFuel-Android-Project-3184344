@@ -12,14 +12,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.JaysFuel">
 
-        <!-- 你原来的其它 Activity 也保留 -->
         <activity android:name=".ScanQRActivity" />
         <activity android:name=".PointsActivity" />
 
-        <!-- 加油站 Activity（导航按钮会打开它） -->
+        <!-- Gas Station Activity (the navigation button will open it) -->
         <activity android:name=".GasStationActivity" />
 
-        <!-- 主入口 Activity -->
+        <!-- Main Entry Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
