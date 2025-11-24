@@ -1,63 +1,105 @@
 package com.example.jaysfuel
 
+import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.net.Uri
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomnavigation.BottomNavigationView
-import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.NavController
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.example.jaysfuel.ui.JaysFuelApp
 
-class MainActivity : AppCompatActivity() {
+/**
+ * Main activity using Jetpack Compose as the root UI.
+ * It reads the ambient light sensor and passes the data
+ * to the composable app.
+ */
+class MainActivity : ComponentActivity(), SensorEventListener {
 
-    private lateinit var navController: NavController
+    private lateinit var sensorManager: SensorManager
+    private var lightSensor: Sensor? = null
+
+    // Current light level in lux (observable state for Compose)
+    private var luxState by mutableFloatStateOf(0f)
+
+    // Whether the app should use night mode (observable state for Compose)
+    private var isNightModeState by mutableStateOf(false)
+
+    // Threshold to switch between day and night.
+    private val nightThresholdLux = 50f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        // 找到 XML 里的 NavHostFragment
-        // Find NavHostFragment from FragmentContainerView
-        val navHostFragment = supportFragmentManager
-            .findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
-        navController = navHostFragment.navController
+        // Init light sensor
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
 
-        val bottomNav = findViewById<BottomNavigationView>(R.id.nav_view)
-
-        // 设置底部四个按钮的点击逻辑
-        // Handle bottom navigation item clicks
-        bottomNav.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                // 首页 / 油价
-                R.id.navigation_home -> {
-                    navController.navigate(R.id.navigation_home)
-                    true
-                }
-
-                // 积分
-                R.id.navigation_points -> {
-                    navController.navigate(R.id.navigation_points)
-                    true
-                }
-
-                // 用户
-                R.id.navigation_profile -> {
-                    navController.navigate(R.id.navigation_profile)
-                    true
-                }
-
-                // 导航到加油站：单独打开 Activity，不走 nav_graph
-                R.id.navigation_station -> {
-                    val intent = Intent(this, GasStationActivity::class.java)
-                    startActivity(intent)
-                    false   // 返回 false：不把这个 tab 设为选中
-                }
-
-                else -> false
-            }
+        setContent {
+            JaysFuelApp(
+                lux = luxState,
+                isNightMode = isNightModeState,
+                onToggleTheme = {
+                    // Manual toggle for emulator / demo
+                    isNightModeState = !isNightModeState
+                },
+                onOpenGasStations = { openGasStations() },
+                onOpenScanQr = { openScanQr() }
+            )
         }
+    }
 
-        // 默认选中首页
-        // Default selected tab is home
-        bottomNav.selectedItemId = R.id.navigation_home
+    override fun onResume() {
+        super.onResume()
+        lightSensor?.let { sensor ->
+            sensorManager.registerListener(
+                this,
+                sensor,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type == Sensor.TYPE_LIGHT) {
+            val lux = event.values[0]
+            luxState = lux
+            // Automatically switch theme based on light level
+            isNightModeState = lux < nightThresholdLux
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        // Not used
+    }
+
+    /**
+     * Open nearby gas stations in a map app.
+     */
+    private fun openGasStations() {
+        val gmmIntentUri = Uri.parse("geo:0,0?q=petrol+station")
+        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+        startActivity(mapIntent)
+    }
+
+    /**
+     * Open the QR scan activity when the user clicks the button.
+     * This uses the existing ScanQRActivity based on ZXing.
+     */
+    private fun openScanQr() {
+        val intent = Intent(this, ScanQRActivity::class.java)
+        startActivity(intent)
     }
 }
