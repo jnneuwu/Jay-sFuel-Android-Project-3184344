@@ -1,32 +1,30 @@
 package com.example.jaysfuel.ui.coupon
 
-import android.graphics.Bitmap
-import android.graphics.Color
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.jaysfuel.model.UserManager
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
 
 /**
- * Screen that shows a QR code for the selected coupon.
- * Staff can scan this code to validate the reward.
+ * Screen that shows a simple QR-style placeholder for the selected coupon.
+ * The real QR generation can be added later.
  */
 @Composable
 fun CouponQrScreen(
@@ -38,88 +36,83 @@ fun CouponQrScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = "Coupon QR code",
-            style = MaterialTheme.typography.titleLarge
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (coupon == null) {
-            Text("No coupon selected.")
-        } else {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text(
-                text = coupon.name,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Show this code to the staff to redeem your reward.",
-                style = MaterialTheme.typography.bodySmall
+                text = "Reward coupon",
+                style = MaterialTheme.typography.titleLarge
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val qrBitmapState = remember(coupon.id) {
-                mutableStateOf(
-                    createQrBitmap("coupon:${coupon.id}:${coupon.name}")
+            if (coupon == null) {
+                Text(
+                    text = "No coupon selected.",
+                    style = MaterialTheme.typography.bodyMedium
                 )
-            }
-
-            val qrBitmap = qrBitmapState.value
-
-            Card {
-                Box(
+            } else {
+                Card(
                     modifier = Modifier
-                        .padding(16.dp)
-                        .height(220.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
                 ) {
-                    if (qrBitmap != null) {
-                        Image(
-                            bitmap = qrBitmap.asImageBitmap(),
-                            contentDescription = "Coupon QR code"
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = coupon.name,
+                            style = MaterialTheme.typography.titleMedium
                         )
-                    } else {
-                        Text("QR code could not be generated")
+                        Text(
+                            text = coupon.description,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Value: ${coupon.pointsCost} pts",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Fake QR code box
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .padding(horizontal = 32.dp)
+                        .background(
+                            color = Color.LightGray,
+                            shape = RoundedCornerShape(16.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "QR CODE\n(placeholder)",
+                        color = Color.DarkGray,
+                        fontSize = 18.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Show this code to the staff in the shop.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(onClick = onBack) {
-            Text("BACK")
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back")
         }
-    }
-}
-
-/**
- * Generates a QR code bitmap from the given text using ZXing.
- */
-fun createQrBitmap(content: String, size: Int = 512): Bitmap? {
-    return try {
-        val writer = QRCodeWriter()
-        val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size)
-        val width = bitMatrix.width
-        val height = bitMatrix.height
-        val pixels = IntArray(width * height)
-
-        for (y in 0 until height) {
-            val offset = y * width
-            for (x in 0 until width) {
-                pixels[offset + x] =
-                    if (bitMatrix[x, y]) Color.BLACK else Color.WHITE
-            }
-        }
-
-        Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
-            setPixels(pixels, 0, width, 0, 0, width, height)
-        }
-    } catch (_: Exception) {
-        null
     }
 }

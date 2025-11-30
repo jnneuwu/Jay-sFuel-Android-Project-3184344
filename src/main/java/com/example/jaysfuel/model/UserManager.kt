@@ -7,39 +7,26 @@ import androidx.compose.runtime.setValue
 import com.example.jaysfuel.R
 
 /**
- * Simple in-memory user state manager.
- * Holds current points, redeemed rewards and basic profile data.
+ * Simple in-memory user data manager for the demo app.
+ * It keeps points, profile info, redeemed rewards and the currently
+ * selected coupon for the QR screen.
  */
 object UserManager {
 
-    // Points and rewards
-    var points by mutableStateOf(1000)
+    // ----- Points and rewards -----
+
+    var points by mutableStateOf(1200)
         private set
 
+    // List of redeemed rewards
     val redeemedRewards = mutableStateListOf<RewardItem>()
-
-    // Basic profile information
-    var userName by mutableStateOf("Mingyu")
-    var birthday by mutableStateOf("1999-01-01")
-    var carModel by mutableStateOf("My first car")
-
-    // Avatar handling: cycle through local drawable resources
-    private var avatarIndex by mutableStateOf(0)
-
-    private val avatarOptions = listOf(
-        R.drawable.ic_person,
-        R.drawable.ic_star
-    )
-
-    val avatarResId: Int
-        get() = avatarOptions[avatarIndex]
 
     // Currently selected coupon for the QR screen
     var currentCoupon: RewardItem? by mutableStateOf(null)
         private set
 
     /**
-     * Try to redeem a reward. Returns true if success.
+     * Try to redeem a reward. Returns true if successful.
      */
     fun redeem(reward: RewardItem): Boolean {
         return if (points >= reward.pointsCost) {
@@ -52,30 +39,37 @@ object UserManager {
     }
 
     /**
-     * Adds points to the current user.
+     * Add some points (could be called when user buys fuel).
      */
     fun addPoints(amount: Int) {
         points += amount
     }
 
     /**
-     * Remember which coupon the user wants to show as QR code.
+     * Select a coupon to be displayed on the CouponQrScreen.
      */
     fun selectCoupon(reward: RewardItem) {
         currentCoupon = reward
     }
 
     /**
-     * Clear the current coupon selection.
+     * Clear the currently selected coupon when leaving the QR screen.
      */
     fun clearCurrentCoupon() {
         currentCoupon = null
     }
 
-    /**
-     * Change avatar to the next drawable icon.
-     */
-    fun toggleAvatar() {
-        avatarIndex = (avatarIndex + 1) % avatarOptions.size
+    // ----- Profile info -----
+
+    var name by mutableStateOf("Mingyu")
+    var carModel by mutableStateOf("Unknown car")
+    var birthday by mutableStateOf("")
+
+    // Avatar resource id (default to first avatar image)
+    var avatarResId by mutableStateOf(R.drawable.avatar_1)
+        private set
+
+    fun setAvatar(resId: Int) {
+        avatarResId = resId
     }
 }

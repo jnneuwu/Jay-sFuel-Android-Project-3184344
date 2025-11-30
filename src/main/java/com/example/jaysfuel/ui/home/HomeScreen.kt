@@ -1,14 +1,7 @@
 package com.example.jaysfuel.ui.home
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -21,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.jaysfuel.R
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
@@ -28,12 +22,12 @@ import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 
 /**
- * Home screen:
- *  - Shows fuel prices
- *  - Shows ambient light sensor value and mode
- *  - Provides a manual theme toggle button
- *  - Provides buttons to open gas stations and scan QR
- *  - Displays a fuel price trend chart using MPAndroidChart
+ * Home/Fuel screen in Compose.
+ * It shows:
+ * - A description of the app goal
+ * - Ambient light information and theme toggle
+ * - A simple fuel price chart and current prices
+ * - Quick actions (open map / open scan QR)
  */
 @Composable
 fun HomeScreen(
@@ -46,30 +40,12 @@ fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header card
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Fuel prices today",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Track price changes across different fuel types.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Fuel price trend chart card
+        // Top card with the main app goal sentence
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -77,86 +53,18 @@ fun HomeScreen(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Fuel price trend",
+                    text = "Fuel prices today",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                FuelPriceChart()
+                Text(
+                    text = "Track fuel prices, earn points, and redeem coupons to save money on your trips.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Light sensor card
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Ambient light",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val luxText = if (lux > 0f) {
-                    String.format("%.0f lux", lux)
-                } else {
-                    "Waiting for sensor or running on emulator"
-                }
-
-                Text(
-                    text = "Current light: $luxText",
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val modeText = if (isNightMode) {
-                    "Current mode: Night"
-                } else {
-                    "Current mode: Day"
-                }
-
-                Text(
-                    text = modeText,
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Button(onClick = onToggleTheme) {
-                    Text("TOGGLE THEME")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Fuel price card
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Fuel prices",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                FuelPriceRow(label = "95 Octane", price = 1.80f)
-                Spacer(modifier = Modifier.height(4.dp))
-                FuelPriceRow(label = "Diesel", price = 1.60f)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Actions card: open map / scan QR
+        // Ambient light and theme card
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -165,74 +73,170 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Quick actions",
+                    text = "Ambient light",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
 
-                Button(onClick = onOpenGasStations) {
+                val luxText = if (lux < 0f) {
+                    "Waiting for sensor data (or running on emulator)."
+                } else {
+                    "${lux.toInt()} lux"
+                }
+
+                Text(
+                    text = luxText,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                val modeText = if (isNightMode) "Night" else "Day"
+                Text(
+                    text = "Current mode: $modeText",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Button(
+                    onClick = onToggleTheme,
+                    modifier = Modifier.align(Alignment.Start)
+                ) {
+                    Text("TOGGLE THEME")
+                }
+            }
+        }
+
+        // Fuel price trend + current prices
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Fuel price trend",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                FuelPriceChart(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                )
+
+                PriceRow(label = "95 Octane", price = "1.80 €/L")
+                PriceRow(label = "Diesel", price = "1.60 €/L")
+            }
+        }
+
+        // Quick actions
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Quick actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Button(
+                    onClick = onOpenGasStations,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text("FIND NEARBY GAS STATIONS")
                 }
 
-                Button(onClick = onOpenScanQr) {
-                    Text("SCAN QR CODE (placeholder)")
+                Button(
+                    onClick = onOpenScanQr,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("SCAN QR CODE")
                 }
             }
         }
     }
 }
 
+/**
+ * Small row that shows a fuel type and its price.
+ */
 @Composable
-private fun FuelPriceRow(label: String, price: Float) {
+private fun PriceRow(
+    label: String,
+    price: String
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium)
         Text(
-            text = String.format("%.2f €/L", price),
+            text = label,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = price,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.secondary // accent color (yellow in dark mode)
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
 
 /**
- * Wraps an MPAndroidChart LineChart inside a composable using AndroidView.
+ * MPAndroidChart line chart embedded into Compose with AndroidView.
+ * Uses fixed sample data for demonstration.
  */
 @Composable
-private fun FuelPriceChart() {
+private fun FuelPriceChart(
+    modifier: Modifier = Modifier
+) {
     AndroidView(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp),
+        modifier = modifier,
         factory = { context ->
             LineChart(context).apply {
                 description.isEnabled = false
                 axisRight.isEnabled = false
                 xAxis.position = XAxis.XAxisPosition.BOTTOM
-                legend.isEnabled = false
-
-                // Sample data for the chart (days vs price)
-                val entries = listOf(
-                    Entry(0f, 1.75f),
-                    Entry(1f, 1.78f),
-                    Entry(2f, 1.80f),
-                    Entry(3f, 1.82f),
-                    Entry(4f, 1.79f)
-                )
-
-                val dataSet = LineDataSet(entries, "95 Octane").apply {
-                    lineWidth = 2f
-                    circleRadius = 4f
-                    setDrawValues(false)
-                }
-
-                data = LineData(dataSet)
-                invalidate()
+                setTouchEnabled(true)
+                setPinchZoom(true)
+                legend.isEnabled = true
             }
+        },
+        update = { chart ->
+            val entries95 = listOf(
+                Entry(1f, 1.80f),
+                Entry(2f, 1.82f),
+                Entry(3f, 1.78f),
+                Entry(4f, 1.81f),
+                Entry(5f, 1.80f)
+            )
+
+            val entriesDiesel = listOf(
+                Entry(1f, 1.60f),
+                Entry(2f, 1.61f),
+                Entry(3f, 1.59f),
+                Entry(4f, 1.60f),
+                Entry(5f, 1.62f)
+            )
+
+            val set95 = LineDataSet(entries95, "95 Octane").apply {
+                lineWidth = 2f
+                circleRadius = 3f
+            }
+
+            val setDiesel = LineDataSet(entriesDiesel, "Diesel").apply {
+                lineWidth = 2f
+                circleRadius = 3f
+            }
+
+            chart.data = LineData(set95, setDiesel)
+            chart.invalidate()
         }
     )
 }
