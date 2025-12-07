@@ -35,8 +35,9 @@ import com.example.jaysfuel.model.RewardItem
 import com.example.jaysfuel.model.UserManager
 
 /**
- * Rewards screen showing current points and a list of products
- * that can be redeemed with points.
+ * Rewards screen.
+ * Shows current points and a list of products
+ * that the user can redeem.
  */
 @Composable
 fun RewardsScreen(
@@ -50,14 +51,17 @@ fun RewardsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Card with total points
         item {
             PointsSummaryCard()
         }
 
+        // Small promo banner
         item {
             BannerCard()
         }
 
+        // Section title text
         item {
             Text(
                 text = "Rewards store",
@@ -70,12 +74,16 @@ fun RewardsScreen(
             )
         }
 
+        // List of reward products
         items(rewards) { reward ->
             RewardProductCard(reward = reward)
         }
     }
 }
 
+/**
+ * Card that shows how many points the user has.
+ */
 @Composable
 private fun PointsSummaryCard() {
     Card(
@@ -102,6 +110,10 @@ private fun PointsSummaryCard() {
     }
 }
 
+/**
+ * Small promo card at the top of the screen.
+ * Left image has been changed to the Ferrari picture.
+ */
 @Composable
 private fun BannerCard() {
     Card(
@@ -116,8 +128,9 @@ private fun BannerCard() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Use the Ferrari image here
             Image(
-                painter = painterResource(id = R.drawable.cold_drink_combo),
+                painter = painterResource(id = R.drawable.ferarri),
                 contentDescription = "Rewards banner illustration",
                 modifier = Modifier
                     .height(72.dp)
@@ -141,6 +154,13 @@ private fun BannerCard() {
     }
 }
 
+/**
+ * One reward product card.
+ * When the user presses REDEEM we:
+ * 1) Ask for confirmation,
+ * 2) Check points with canRedeem(),
+ * 3) If enough, call redeemReward() and show a result dialog.
+ */
 @Composable
 private fun RewardProductCard(
     reward: RewardItem
@@ -149,6 +169,7 @@ private fun RewardProductCard(
     var showResultDialog by remember { mutableStateOf(false) }
     var lastRedeemSuccess by remember { mutableStateOf(false) }
 
+    // Choose image based on reward id
     val imageRes = when (reward.id) {
         1 -> R.drawable.fuel_coupon
         2 -> R.drawable.premium_fuel_upgrade
@@ -222,12 +243,19 @@ private fun RewardProductCard(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Redeem reward") },
             text = {
-                Text("Are you sure you want to redeem \"${reward.name}\" for ${reward.pointsCost} points?")
+                Text(
+                    "Are you sure you want to redeem \"${reward.name}\" for ${reward.pointsCost} points?"
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val success = UserManager.redeem(reward)
+                        // Check points first
+                        val success = UserManager.canRedeem(reward)
+                        if (success) {
+                            // Spend points, save history, keep in memory
+                            UserManager.redeemReward(reward)
+                        }
                         lastRedeemSuccess = success
                         showConfirmDialog = false
                         showResultDialog = true
@@ -244,12 +272,15 @@ private fun RewardProductCard(
         )
     }
 
-    // Result dialog
+    // Result dialog (success / not enough points)
     if (showResultDialog) {
         AlertDialog(
             onDismissRequest = { showResultDialog = false },
             title = {
-                Text(if (lastRedeemSuccess) "Redeem successful" else "Not enough points")
+                Text(
+                    if (lastRedeemSuccess) "Redeem successful"
+                    else "Not enough points"
+                )
             },
             text = {
                 Text(

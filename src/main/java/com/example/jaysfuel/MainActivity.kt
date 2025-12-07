@@ -1,5 +1,6 @@
 package com.example.jaysfuel
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.hardware.Sensor
@@ -8,12 +9,14 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.jaysfuel.model.UserManager
 import com.example.jaysfuel.ui.JaysFuelApp
 
 /**
@@ -41,6 +44,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         // Init light sensor
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+
+        // Init Room database and user manager (Milestone 3)
+        UserManager.init(applicationContext)
 
         setContent {
             JaysFuelApp(
@@ -86,12 +92,33 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     /**
-     * Open nearby gas stations in a map app.
+     * Open nearby gas stations in a map app or browser.
+     * 1. Try geo: URI with any map app.
+     * 2. If no map app, try Google Maps web in browser.
+     * 3. If both fail, show a Toast.
      */
     private fun openGasStations() {
-        val gmmIntentUri = Uri.parse("geo:0,0?q=petrol+station")
-        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-        startActivity(mapIntent)
+        // First try a geo: intent (any map app can handle this)
+        val geoUri = Uri.parse("geo:0,0?q=petrol+station")
+        val geoIntent = Intent(Intent.ACTION_VIEW, geoUri)
+
+        try {
+            startActivity(geoIntent)
+            return
+        } catch (e: ActivityNotFoundException) {
+            // No map app found, try browser below
+        }
+
+        // Fallback: open Google Maps web in browser
+        val webUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=petrol+station")
+        val webIntent = Intent(Intent.ACTION_VIEW, webUri)
+
+        try {
+            startActivity(webIntent)
+        } catch (e: ActivityNotFoundException) {
+            // No app can handle map or browser
+            Toast.makeText(this, "No app found to open map.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**
