@@ -1,6 +1,7 @@
 package com.example.jaysfuel.model
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -18,25 +19,14 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * Central user state manager.
- *
- * - Holds profile info and avatar
- * - Holds current points and redeemed rewards (in memory)
- * - Writes redeemed history into Room for Milestone 3
- * - Exposes a Flow for history so Compose screens can observe it
- * - Provides selectCoupon / clearCurrentCoupon so the QR screen can work
+ * Main manager for user info. Holds profile and avatar. Holds points and rewards in memory. Saves history to Room for Milestone 3. Shares history with screens. Handles coupon pick for QR screen. New: Saves/loads profile to UserStorage (name, car, birthday, avatar, points).
  */
 object UserManager {
 
-    // ---------------------------------------------------------
     // Coroutine scope for Room work
-    // ---------------------------------------------------------
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // ---------------------------------------------------------
     // Profile data
-    // ---------------------------------------------------------
-
     var name: String by mutableStateOf("Guest")
         private set
 
@@ -46,10 +36,7 @@ object UserManager {
     var birthday: String by mutableStateOf("Not set")
         private set
 
-    // ---------------------------------------------------------
     // Avatar handling (5 avatars in drawable)
-    // ---------------------------------------------------------
-
     private val avatarResIds: List<Int> = listOf(
         R.drawable.avatar_1,
         R.drawable.avatar_2,
@@ -71,47 +58,74 @@ object UserManager {
         get() = avatarResIds
 
     /**
-     * Change current avatar by index (0..4).
+     * Change avatar by number (0 to 4). New: Save to Storage.
      */
     fun setAvatar(index: Int) {
-        avatarIndex = index.coerceIn(0, avatarResIds.size - 1)
+        val clampedIndex = index.coerceIn(0, avatarResIds.size - 1)
+        if (avatarIndex != clampedIndex) {
+            avatarIndex = clampedIndex
+            // Save to Storage (async, no block UI)
+            saveToStorage()
+        }
     }
 
     /**
-     * Called from ProfileScreen when user presses "Save profile".
+     * Called when user saves profile in screen. New: Save to Storage.
      */
     fun updateProfile(name: String, car: String, birthday: String) {
         this.name = name
         this.carModel = car
         this.birthday = birthday
+        // Save to Storage
+        saveToStorage()
     }
 
-    // ---------------------------------------------------------
-    // Points and in–memory rewards
-    // ---------------------------------------------------------
-
+    // Points and rewards
     var points: Int by mutableIntStateOf(1200)
         private set
 
-    // Redeemed rewards kept in memory so Profile and QR screens can show them
-    val redeemedRewards = mutableStateListOf<RewardItem>()
+    private val redeemedRewards = mutableStateListOf<RewardItem>()
+
+    // FIXED: Renamed to avoid name conflict with private val; public for ProfileScreen
+    val publicRedeemedRewards: List<RewardItem> get() = redeemedRewards
+
+    // New: UserStorage instance (lazy start).
+    private var userStorage: UserStorage? = null
+
+    private fun getUserStorage(context: Context): UserStorage {
+        return userStorage ?: UserStorage(context).also { userStorage = it }
+    }
 
     /**
-     * Check if user has enough points to redeem a reward.
+     * New: Save profile to SharedPreferences (async, no block UI).
      */
-    fun canRedeem(reward: RewardItem): Boolean = points >= reward.pointsCost
+    private fun saveToStorage(context: Context? = null) {
+        val storage = if (context != null) UserStorage(context) else userStorage ?: return
+        ioScope.launch {
+            storage.saveName(name)
+            storage.saveCarModel(carModel)
+            storage.saveBirthday(birthday)
+            storage.saveAvatarIndex(avatarIndex)
+            storage.savePoints(points)
+        }
+    }
 
     /**
-     * Redeem a reward:
-     * - if points not enough → return false, nothing changes
-     * - if enough:
-     *      - deduct points
-     *      - add to in–memory redeemedRewards
-     *      - insert a record into Room history (Milestone 3)
-     *
-     * Returns true when redemption succeeds.
+     * New: Load profile from Storage (sync, call on start).
      */
-    fun redeemReward(reward: RewardItem): Boolean {
+    private fun loadFromStorage(context: Context) {
+        val storage = getUserStorage(context)
+        name = storage.loadName()
+        carModel = storage.loadCarModel()
+        birthday = storage.loadBirthday()
+        avatarIndex = storage.loadAvatarIndex()
+        points = storage.loadPoints()
+    }
+
+    // Redeem logic (keep as is, short).
+    private fun canRedeem(reward: RewardItem): Boolean = points >= reward.pointsCost
+
+    private fun redeemReward(reward: RewardItem): Boolean {
         if (!canRedeem(reward)) {
             return false
         }
@@ -119,57 +133,74 @@ object UserManager {
         points -= reward.pointsCost
         redeemedRewards.add(reward)
         insertHistoryRecord(reward)
+        // New: Save points to Storage
+        saveToStorage()
 
         return true
     }
 
-    /**
-     * Small wrapper for the UI.
-     * RewardsScreen calls UserManager.redeem(reward),
-     * but the main logic is in redeemReward().
-     */
     fun redeem(reward: RewardItem): Boolean {
         return redeemReward(reward)
     }
 
-    // ---------------------------------------------------------
-    // Room database: redeemed history
-    // ---------------------------------------------------------
+    // FIXED: New method for refilling points (simulate earning after fueling)
+    fun refillPoints(newPoints: Int = 1200) {
+        val added = newPoints - points
+        points = newPoints
+        insertPointsUpdateRecord(added)
+        saveToStorage()
+    }
 
+    // FIXED: Insert points update record to Room
+    private fun insertPointsUpdateRecord(added: Int) {
+        val repo = pointsUpdateRepository ?: return
+        val entity = PointsUpdateEntity(
+            pointsAdded = added,
+            timestamp = System.currentTimeMillis()
+        )
+        ioScope.launch {
+            repo.insert(entity)
+        }
+    }
+
+    // Room database: history section (keep as is).
     private var repository: RewardHistoryRepository? = null
+    private var pointsUpdateRepository: PointsUpdateRepository? = null  // FIXED: Add for points updates
     private var isInitialized: Boolean = false
 
-    // Flow observed by ProfileScreen to show "total rewards in history"
     private val _redeemedHistory =
         MutableStateFlow<List<RedeemedRewardEntity>>(emptyList())
     val redeemedHistory: StateFlow<List<RedeemedRewardEntity>> =
         _redeemedHistory.asStateFlow()
 
     /**
-     * Must be called once from MainActivity.onCreate(applicationContext).
-     * Sets up Room and starts observing the history table.
+     * Call once from MainActivity start. Sets up Room and watches history. New: Loads profile from Storage.
      */
     fun init(context: Context) {
         if (isInitialized) return
 
+        // New: Load saved profile first
+        loadFromStorage(context)
+
         val db = JaysFuelDatabase.getInstance(context)
         repository = RewardHistoryRepository(dao = db.rewardHistoryDao())
+        pointsUpdateRepository = PointsUpdateRepository(dao = db.pointsUpdateDao())  // FIXED: Init points repo
         isInitialized = true
 
-        // Observe history from Room and push to StateFlow
+        // Watch history from Room and push to StateFlow
         ioScope.launch {
-            repository
-                ?.observeHistory()
-                ?.collectLatest { list ->
-                    _redeemedHistory.value = list
-                }
+            try {  // FIXED: Add try-catch to prevent Room exceptions from crashing app
+                repository
+                    ?.observeHistory()
+                    ?.collectLatest { list ->
+                        _redeemedHistory.value = list
+                    }
+            } catch (e: Exception) {
+                Log.e("UserManager", "Room history observe failed", e)  // FIXED: Log error, no crash
+            }
         }
     }
 
-    /**
-     * Insert a new redeemed record into Room.
-     * Called whenever redeemReward() succeeds.
-     */
     private fun insertHistoryRecord(reward: RewardItem) {
         val repo = repository ?: return
 
@@ -181,35 +212,24 @@ object UserManager {
         )
 
         ioScope.launch {
-            repo.insert(entity)
+            try {
+                repo.insert(entity)
+            } catch (e: Exception) {
+                Log.e("UserManager", "Room insert failed", e)  // FIXED: Catch insert error
+            }
         }
     }
 
-    // ---------------------------------------------------------
-    // Coupon selection for QR screen
-    // ---------------------------------------------------------
-
-    /**
-     * In-memory selected coupon used by CouponQrScreen.
-     * AppNavHost calls selectCoupon() and then navigates to QR screen.
-     * CouponQrScreen reads currentCoupon and then calls clearCurrentCoupon()
-     * when user closes the screen.
-     */
+    // Coupon pick for QR screen (keep as is).
     private var _currentCoupon: RewardItem? = null
 
     val currentCoupon: RewardItem?
         get() = _currentCoupon
 
-    /**
-     * Called from AppNavHost when user taps a reward and goes to QR screen.
-     */
     fun selectCoupon(reward: RewardItem) {
         _currentCoupon = reward
     }
 
-    /**
-     * Called from CouponQrScreen when user closes the QR view.
-     */
     fun clearCurrentCoupon() {
         _currentCoupon = null
     }

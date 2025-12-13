@@ -2,6 +2,7 @@ package com.example.jaysfuel.ui.rewards
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,9 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -26,10 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale  // FIXED: Correct import for ContentScale (UI layout module)
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.jaysfuel.R
 import com.example.jaysfuel.model.RewardItem
 import com.example.jaysfuel.model.UserManager
@@ -54,6 +58,11 @@ fun RewardsScreen(
         // Card with total points
         item {
             PointsSummaryCard()
+        }
+
+        // FIXED: Add Refill Points button below points card
+        item {
+            RefillPointsButton()
         }
 
         // Small promo banner
@@ -93,61 +102,82 @@ private fun PointsSummaryCard() {
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Your points",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold
+                text = "Total points:",
+                style = MaterialTheme.typography.bodyLarge
             )
+            Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "${UserManager.points} pts",
-                style = MaterialTheme.typography.headlineSmall
+                text = "${UserManager.points}",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
 }
 
 /**
- * Small promo card at the top of the screen.
- * Left image has been changed to the Ferrari picture.
+ * FIXED: New button to refill points to 1200 (simulate earning after fueling), log to Room.
+ */
+@Composable
+private fun RefillPointsButton() {
+    Button(
+        onClick = { UserManager.refillPoints() },  // FIXED: Call refill method
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+    ) {
+        Text(
+            text = "Refill Points (Simulate Fueling)",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+/**
+ * Promo banner with Ferrari image.
+ * Tap to open map or something, but for now just static.
  */
 @Composable
 private fun BannerCard() {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Use the Ferrari image here
             Image(
-                painter = painterResource(id = R.drawable.ferarri),
-                contentDescription = "Rewards banner illustration",
-                modifier = Modifier
-                    .height(72.dp)
-                    .weight(1f)
+                painter = painterResource(id = R.drawable.ferrari),
+                contentDescription = "Ferrari promo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop  // FIXED: Now imported, no error
             )
-
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "Save on every refill",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Drive like a pro",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Redeem fuel coupons and shop snacks with your points.",
-                    style = MaterialTheme.typography.bodySmall
+                    text = "Premium fuel at Jay's",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -155,107 +185,85 @@ private fun BannerCard() {
 }
 
 /**
- * One reward product card.
- * When the user presses REDEEM we:
- * 1) Ask for confirmation,
- * 2) Check points with canRedeem(),
- * 3) If enough, call redeemReward() and show a result dialog.
+ * Card for one reward product.
+ * Shows image, name, description, points cost.
+ * Tap to confirm redeem.
  */
 @Composable
-private fun RewardProductCard(
-    reward: RewardItem
-) {
+private fun RewardProductCard(reward: RewardItem) {
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showResultDialog by remember { mutableStateOf(false) }
     var lastRedeemSuccess by remember { mutableStateOf(false) }
 
-    // Choose image based on reward id
-    val imageRes = when (reward.id) {
-        1 -> R.drawable.fuel_coupon
-        2 -> R.drawable.premium_fuel_upgrade
-        3 -> R.drawable.coffee
-        4 -> R.drawable.cold_drink_combo
-        5 -> R.drawable.snack_pack
-        6 -> R.drawable.car_wash_voucher
-        7 -> R.drawable.energy_drink
-        else -> R.drawable.fuel_coupon
-    }
-
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showConfirmDialog = true },
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = reward.name,
-                    modifier = Modifier
-                        .height(80.dp)
-                        .weight(1f)
+            // Product image based on id
+            Image(
+                painter = painterResource(id = getImageForRewardId(reward.id)),
+                contentDescription = reward.name,
+                modifier = Modifier
+                    .size(64.dp)
+                    .padding(end = 16.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = reward.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
-
-                Column(
-                    modifier = Modifier.weight(2f)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = reward.description,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = reward.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = reward.description,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${reward.pointsCost} pts",
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "(${reward.category})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = { showConfirmDialog = true },
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text(text = "REDEEM")
             }
         }
     }
 
-    // Confirmation dialog
+    // Confirm dialog (before redeem)
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Redeem reward") },
+            title = {
+                Text("Redeem ${reward.name}")
+            },
             text = {
-                Text(
-                    "Are you sure you want to redeem \"${reward.name}\" for ${reward.pointsCost} points?"
-                )
+                Text("Are you sure you want to redeem '${reward.name}' for ${reward.pointsCost} points?")
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // Check points first
-                        val success = UserManager.canRedeem(reward)
-                        if (success) {
-                            // Spend points, save history, keep in memory
-                            UserManager.redeemReward(reward)
-                        }
+                        // Fixed: Use public redeem() only. It checks points and redeems if possible.
+                        val success = UserManager.redeem(reward)
                         lastRedeemSuccess = success
                         showConfirmDialog = false
                         showResultDialog = true
@@ -297,6 +305,20 @@ private fun RewardProductCard(
                 }
             }
         )
+    }
+}
+
+// Helper: Get drawable id based on reward id
+private fun getImageForRewardId(id: Int): Int {
+    return when (id) {
+        1 -> R.drawable.fuel_coupon
+        2 -> R.drawable.premium_fuel_upgrade
+        3 -> R.drawable.coffee
+        4 -> R.drawable.cold_drink_combo
+        5 -> R.drawable.snack_pack
+        6 -> R.drawable.car_wash_voucher
+        7 -> R.drawable.energy_drink
+        else -> R.drawable.ic_navigation  // Fixed: Use existing ic_navigation.xml as default
     }
 }
 

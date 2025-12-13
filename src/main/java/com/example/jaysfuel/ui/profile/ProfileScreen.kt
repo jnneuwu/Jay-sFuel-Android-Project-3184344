@@ -3,14 +3,20 @@ package com.example.jaysfuel.ui.profile
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,11 +33,7 @@ import com.example.jaysfuel.model.RewardItem
 import com.example.jaysfuel.model.UserManager
 
 /**
- * Profile screen:
- * - shows and edits name / car / birthday
- * - shows current avatar and allows choosing a new one
- * - shows current redeemed rewards (tap to show QR code)
- * - shows reward history stored in Room (Milestone 3)
+ * Profile screen: Shows and edits name, car, birthday. Shows avatar and lets user pick new one (fixed with click and popup). Shows redeemed rewards (tap for QR code). Shows history from Room database (for Milestone 3).
  */
 @Composable
 fun ProfileScreen(
@@ -42,8 +44,45 @@ fun ProfileScreen(
     var localCar by remember { mutableStateOf(UserManager.carModel) }
     var localBirthday by remember { mutableStateOf(UserManager.birthday) }
 
+    // New: Controls if avatar picker popup shows.
+    var showAvatarDialog by remember { mutableStateOf(false) }
 
     val history by UserManager.redeemedHistory.collectAsState(initial = emptyList())
+
+    // 优化: 显示 redeemedRewards 列表 (in-memory, from UserManager public getter)
+    val redeemedRewards = UserManager.publicRedeemedRewards
+
+    // New: Avatar picker popup (fixed: ensure 5 avatars).
+    if (showAvatarDialog) {
+        AlertDialog(
+            onDismissRequest = { showAvatarDialog = false },
+            title = { Text("Choose Avatar") },
+            text = {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    itemsIndexed(UserManager.avatarChoices) { index, resId ->
+                        Image(
+                            painter = painterResource(id = resId),
+                            contentDescription = "Avatar $index",
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clickable {
+                                    UserManager.setAvatar(index)  // Update UserManager state, UI auto refreshes
+                                    showAvatarDialog = false
+                                }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAvatarDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -52,6 +91,7 @@ fun ProfileScreen(
             .padding(horizontal = 16.dp, vertical = 24.dp)
     ) {
 
+        // Fixed: Add click to avatar image.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -61,6 +101,7 @@ fun ProfileScreen(
                 contentDescription = "Avatar",
                 modifier = Modifier
                     .size(72.dp)
+                    .clickable { showAvatarDialog = true }  // New: Click to show popup
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -81,7 +122,7 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 编辑表单
+        // Edit form (keep as is)
         OutlinedTextField(
             value = localName,
             onValueChange = { localName = it },
@@ -107,58 +148,50 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            Button(
-                onClick = {
-                    UserManager.updateProfile(
-                        name = localName,
-                        car = localCar,
-                        birthday = localBirthday
-                    )
-                }
-            ) {
-                Text("Save profile")
-            }
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Fixed/New: Save profile button (was missing or cut off, now full).
+        Button(
+            onClick = {
+                UserManager.updateProfile(localName, localCar, localBirthday)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Save profile")
+        }
 
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 优化: Redeemed rewards section - 显示动态列表 (if empty, show message)
         Text(
             text = "Redeemed rewards (tap to show QR)",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
+        Spacer(modifier = Modifier.height(4.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        val currentCoupons = UserManager.redeemedRewards
-
-        if (currentCoupons.isEmpty()) {
+        if (redeemedRewards.isEmpty()) {
             Text(
                 text = "No active coupons yet. Redeem a reward in the Rewards tab.",
                 style = MaterialTheme.typography.bodySmall
             )
         } else {
-            currentCoupons.forEach { reward ->
-                CouponCard(
-                    reward = reward,
-                    onClick = { onCouponClick(reward) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(  // New: Use LazyColumn to show list of redeemed rewards
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.height(200.dp)  // Limit height to avoid overflow
+            ) {
+                items(redeemedRewards) { reward ->
+                    CouponCard(
+                        reward = reward,
+                        onClick = { onCouponClick(reward) }  // Click to navigate to QR screen
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-
-
-        // -----------------------------------------------------------------
+        // Reward history section (keep as is).
         Text(
             text = "Reward history (saved in Room)",
             style = MaterialTheme.typography.titleMedium,
@@ -188,7 +221,7 @@ fun ProfileScreen(
     }
 }
 
-// QR）
+// CouponCard and HistoryCard keep as is (copied from your code).
 @Composable
 private fun CouponCard(
     reward: RewardItem,
@@ -222,7 +255,6 @@ private fun CouponCard(
     }
 }
 
-//（Room  RedeemedRewardEntity）
 @Composable
 private fun HistoryCard(
     entity: RedeemedRewardEntity

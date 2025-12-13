@@ -36,41 +36,31 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var isNightModeState by mutableStateOf(false)
 
     // Threshold to switch between day and night.
-    private val nightThresholdLux = 50f
+    private val nightThreshold = 10f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Init light sensor
+        // FIXED: Init UserManager with context for Room and Storage
+        UserManager.init(this.applicationContext)
+
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
-
-        // Init Room database and user manager (Milestone 3)
-        UserManager.init(applicationContext)
 
         setContent {
             JaysFuelApp(
                 lux = luxState,
                 isNightMode = isNightModeState,
-                onToggleTheme = {
-                    // Manual toggle for emulator / demo
-                    isNightModeState = !isNightModeState
-                },
-                onOpenGasStations = { openGasStations() },
-                onOpenScanQr = { openScanQr() }
+                onToggleTheme = { isNightModeState = !isNightModeState },
+                onOpenGasStations = ::openGasStations,
+                onOpenScanQr = ::openScanQr
             )
         }
     }
 
     override fun onResume() {
         super.onResume()
-        lightSensor?.let { sensor ->
-            sensorManager.registerListener(
-                this,
-                sensor,
-                SensorManager.SENSOR_DELAY_NORMAL
-            )
-        }
+        sensorManager.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     override fun onPause() {
@@ -80,10 +70,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_LIGHT) {
-            val lux = event.values[0]
-            luxState = lux
-            // Automatically switch theme based on light level
-            isNightModeState = lux < nightThresholdLux
+            luxState = event.values[0]
+            isNightModeState = luxState < nightThreshold
         }
     }
 
